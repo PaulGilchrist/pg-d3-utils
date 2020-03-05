@@ -1,0 +1,23 @@
+{
+    "author": "Paul Gilchrist",
+    "description": "D3 Utilities JavaScript Library",
+    "homepage": "https://github.com/PaulGilchrist/pg-d3-utils.git",
+    "keywords": [
+        "d3",
+        "npm",
+        "pg-d3-utils",
+        "tools",
+        "utilities"
+    ],
+    "license": "MIT",
+    "main": "d3-utils",
+    "name": "pg-d3-utils",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/PaulGilchrist/pg-d3-utils.git"
+    },
+    "version": "1.0.0",
+    "dependencies": {
+        "d3": "^5.15.0"
+    }
+}
