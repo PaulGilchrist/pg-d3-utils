@@ -263,7 +263,7 @@ const d3Utils = {
         }
     },
     scale: (data, xType, key, range, useMin = false) => {
-        // Scale to use to best fit data into viewable space
+        // Scale to best fit data into viewable space
         // Size refers to the x or y pixel size
         let min, max, scale;
         if (xType === 'date') {
