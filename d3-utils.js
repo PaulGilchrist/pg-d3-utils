@@ -1,5 +1,7 @@
 import * as d3 from 'd3';
 import { schemePaired } from 'd3-scale-chromatic';
+import { Selection, select } from 'd3-selection';
+import { transition } from 'd3-transition';
 import './d3-utils.css'
 
 // https://keathmilligan.net/create-a-reusable-chart-component-with-angular-and-d3-js/
@@ -48,7 +50,7 @@ const d3Utils = {
         // Static Lables
         svg.selectAll('text').data(data).enter().append('text')
             .text(function (d) {
-                return d3Utils.showLabels(yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true);
+                return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true);
             })
             .attr('x', function (d, i) { return i * xMultiplier + (xMultiplier - padding) / 2; })
             .attr('y', function (d) { return height - (d[yKey] * yMultiplier) + 14; }) // Text 14px below the bar top, or roughly up 1em
@@ -101,7 +103,7 @@ const d3Utils = {
             });
         // Lables
         svg.selectAll('text').data(data).enter().append('text')
-            .text(function (d) { return d3Utils.showLabels(yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
+            .text(function (d) { return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
             .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
             .attr('y', function (d) { return yScale(d[yKey]); })
             .attr('text-anchor', 'start')
@@ -211,7 +213,7 @@ const d3Utils = {
             });
         // Static Lables
         svg.selectAll('text').data(data).enter().append('text')
-            .text(function (d) { return d3Utils.showLabels(yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
+            .text(function (d) { return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
             .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
             .attr('y', function (d) { return yScale(d[yKey]); })
             .attr('text-anchor', 'start')
