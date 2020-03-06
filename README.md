@@ -29,7 +29,7 @@ d3Utils.draw(type, el, tooltip, data, width, height, xType, xKey, yKey, xToFixed
 ```js
 const tooltip = d3.select('body')
                 .append('div')
-                .attr('class', 'd3-utils-tooltip')
+                .attr('class', 'd3-tooltip')
                 .style('opacity', 0)
                 .style('pointer-events', 'none')
                 .style('position', 'absolute');

@@ -16,8 +16,11 @@
         "type": "git",
         "url": "https://github.com/PaulGilchrist/pg-d3-utils.git"
     },
-    "version": "1.0.0",
+    "version": "1.0.6",
     "dependencies": {
-        "d3": "^5.15.0"
+        "d3": "~5.15.0",
+        "d3-scale-chromatic": "~1.5.0",
+        "d3-selection": "~1.4.1",
+        "d3-transition": "~1.3.2"
     }
 }

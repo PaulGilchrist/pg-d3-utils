@@ -1,4 +1,5 @@
 import * as d3 from 'd3';
+import { schemePaired } from 'd3-scale-chromatic';
 import './d3-utils.css'
 
 // https://keathmilligan.net/create-a-reusable-chart-component-with-angular-and-d3-js/
@@ -12,6 +13,7 @@ const d3Utils = {
         const xMultiplier = width / data.length;
         const svg = d3.select(el)
             .append('svg')
+            .attr('class', 'd3-utils')
             .attr('width', width)
             .attr('height', height);
         // Bars
@@ -70,11 +72,12 @@ const d3Utils = {
             .curve(d3.curveLinear);
         const svg = d3.select(el)
             .append('svg')
+            .attr('class', 'd3-utils')
             .attr('width', width)
             .attr('height', height);
         // Line
         svg.append('path')
-            .attr('class', 'd3-utils-path')
+            .attr('class', 'd3-path')
             .attr('d', lineFunction(data))
             .attr('fill', 'none');
         // Dots
@@ -104,10 +107,10 @@ const d3Utils = {
             .attr('text-anchor', 'start')
             .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
         svg.append('g').call(xAxisGen)
-            .attr('class', 'd3-utils-axis')
+            .attr('class', 'd3-axis')
             .attr('transform', 'translate(0, ' + (height - padding) + ')');
         svg.append('g').call(yAxisGen)
-            .attr('class', 'd3-utils-axis')
+            .attr('class', 'd3-axis')
             .attr('transform', 'translate(' + padding + ', 0)');
     },
     createPieChart: (el, tooltip, data, width, xType, xKey, yKey, xToFixed, yToFixed, labels) => {
@@ -115,6 +118,7 @@ const d3Utils = {
         const vis = d3.select(el)
             .append('svg:svg') // Create the SVG element inside nativeElement
             .data([data]) // Associate our data with the document
+            .attr('class', 'd3-utils')
             .attr('width', r * 2) // Set the width and height of our visualization (these will be attributes of the <svg> tag
             .attr('height', r * 2)
             .append('svg:g') // Make a group to hold our pie chart
@@ -126,7 +130,7 @@ const d3Utils = {
             .enter() // This will create <g> elements for every "extra" data element that should be associated with a selection. The result is creating a <g> for every object in the data array
             .append('svg:g') // Create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
             .attr('class', 'slice'); // Allow us to style things in the slices (like text)
-        const color = d3.scaleOrdinal(d3.schemeCategory10); // builtin range of colors
+        const color = d3.scaleOrdinal(schemePaired); // builtin range of colors
         const arc = d3.arc().outerRadius(r).innerRadius(0); // Declare an arc generator function that will create <path> elements for us using arc data
         arcs.append('svg:path')
             .attr('fill', function (d, i) { return color(i); }) // Set the color for each slice to be chosen from the color function defined above
@@ -148,7 +152,7 @@ const d3Utils = {
         const isDate = (xType === 'date');
         const timeFormat = d3.timeFormat('%b');
         arcs.append('svg:text') // Add a label to each slice
-            .attr('class', 'd3-utils-axis')
+            .attr('class', 'd3-axis')
             .attr('transform', function (d) { // Set the label's origin to the center of the arc
                 // Make sure to set these before calling arc.centroid
                 d.innerRadius = 0;
@@ -183,6 +187,7 @@ const d3Utils = {
         const yAxisGen = d3.axisLeft(yScale);
         const svg = d3.select(el)
             .append('svg')
+            .attr('class', 'd3-utils')
             .attr('width', width)
             .attr('height', height);
         // Dots
@@ -212,18 +217,18 @@ const d3Utils = {
             .attr('text-anchor', 'start')
             .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
         svg.append('g').call(xAxisGen)
-            .attr('class', 'd3-utils-axis')
+            .attr('class', 'd3-axis')
             .attr('transform', 'translate(0, ' + (height - padding) + ')');
         svg.append('g').call(yAxisGen)
-            .attr('class', 'd3-utils-axis')
+            .attr('class', 'd3-axis')
             .attr('transform', 'translate(' + padding + ', 0)');
     },
     classPicker: (value, warningLevel) => {
         // Returns a warning class that can be styles through CSS to make data above the warningLevel stand out
         if (value >= warningLevel) {
-            return 'd3-utils-warning';
+            return 'd3-warning';
         } else {
-            return 'd3-utils-default';
+            return 'd3-default';
         }
     },
     draw: (type, el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
