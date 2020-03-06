@@ -141,7 +141,7 @@ const d3Utils = {
             .on('mouseover', function (d,i) {
                 // Show tooltip at mouse pointer
                 tooltip.transition().duration(500).style('opacity', 0.9);
-                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[i][xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[i][yKey], yToFixed)}<br/>`;
+                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(data[i][xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(data[i][yKey], yToFixed)}<br/>`;
                 tooltip.html(tip)
                     .style('left', (d3.event.pageX) + 'px')
                     .style('top', (d3.event.pageY - 28) + 'px');
