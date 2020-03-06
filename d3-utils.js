@@ -138,10 +138,10 @@ const d3Utils = {
             .attr('fill', function (d, i) { return color(i); }) // Set the color for each slice to be chosen from the color function defined above
             .attr('d', function (d) { return arc(d); }) // this creates the actual SVG path using the associated data (pie) with the arc drawing function
             // Dynamic Lables
-            .on('mouseover', function (d) {
+            .on('mouseover', function (d,i) {
                 // Show tooltip at mouse pointer
                 tooltip.transition().duration(500).style('opacity', 0.9);
-                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[yKey], yToFixed)}<br/>`;
+                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[i][xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[i][yKey], yToFixed)}<br/>`;
                 tooltip.html(tip)
                     .style('left', (d3.event.pageX) + 'px')
                     .style('top', (d3.event.pageY - 28) + 'px');

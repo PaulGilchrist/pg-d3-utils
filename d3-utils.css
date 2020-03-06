@@ -16,7 +16,6 @@
     padding: 5px;
 }
 .d3-utils path, .d3-utils line, .d3-axis path, .d3-axis line {
-    fill: none;
     stroke: #337ab7;
 }
 .d3-utils .d3-axis text {
