@@ -1,7 +1,5 @@
 import * as d3 from 'd3';
 import { schemePaired } from 'd3-scale-chromatic';
-import { Selection, select } from 'd3-selection';
-import { transition } from 'd3-transition';
 import './d3-utils.css'
 
 // https://keathmilligan.net/create-a-reusable-chart-component-with-angular-and-d3-js/
@@ -10,7 +8,8 @@ const d3Utils = {
     createBarGraph: (el, tooltip, data, width, height, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
         const padding = 2;
         // Find best fit for data to fill height
-        const yMultiplier = height / d3.max(data, function (d) { return d[yKey]; });
+        const yMinMax = d3Utils.getMinMax(data, 'number', null, yKey);
+        const yMultiplier = height / yMinMax.max;
         // Find best fit for data to fill width
         const xMultiplier = width / data.length;
         const svg = d3.select(el)
@@ -50,70 +49,89 @@ const d3Utils = {
         // Static Lables
         svg.selectAll('text').data(data).enter().append('text')
             .text(function (d) {
-                return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true);
+                return d3Utils.showLabels(yMinMax, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true);
             })
             .attr('x', function (d, i) { return i * xMultiplier + (xMultiplier - padding) / 2; })
             .attr('y', function (d) { return height - (d[yKey] * yMultiplier) + 14; }) // Text 14px below the bar top, or roughly up 1em
             .attr('text-anchor', 'middle');
     },
-    createLineChart: (el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
+    createLineChart: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel) => {
         // Array must be sorted by x before passing to this function or the line will jump all over the place
-        const padding = 36;
+        // Supports both single line (data=[]) and multi-line (data=[[],[],[],...])
+        // zKey is only used for multi-line charts where Z represents the key in the parent object that denotes the sub-array
+        const padding = 50;
         const isDate = (xType === 'date');
-        const xScale = d3Utils.scale(data, xType, xKey, [padding + 5, width - 10], true);
-        const yScale = d3Utils.scale(data, xType, yKey, [height - padding, 10], true);
-        const xAxisGen = d3.axisBottom(xScale);
+        // Find the max x and y scale values across the array of lines
+        const xMinMax = d3Utils.getMinMax(data, xType, zKey, xKey);
+        const yMinMax = d3Utils.getMinMax(data, 'number', zKey, yKey);
+        const xScale = d3Utils.scale(xType, xMinMax, [padding + 5, width - 10], true);
+        const yScale = d3Utils.scale(null, yMinMax, [height - padding, 10], true);
+        const xAxisGen = d3.axisBottom().scale(xScale);
         if (isDate) {
             xAxisGen.tickFormat(d3.timeFormat('%b'));
         }
-        const yAxisGen = d3.axisLeft(yScale);
-        const lineFunction = d3.line()
-            // Make sure all date strings are date objects before putting them into the path
-            .x(function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-            .y(function (d) { return yScale(d[yKey]); })
-            .curve(d3.curveLinear);
+        const yAxisGen = d3.axisLeft().scale(yScale);
         const svg = d3.select(el)
             .append('svg')
             .attr('class', 'd3-utils')
             .attr('width', width)
             .attr('height', height);
-        // Line
-        svg.append('path')
-            .attr('class', 'd3-path')
-            .attr('d', lineFunction(data))
-            .attr('fill', 'none');
-        // Dots
-        svg.selectAll('circle').data(data).enter().append('circle')
-            .attr('cx', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-            .attr('cy', function (d) { return yScale(d[yKey]); })
-            .attr('r', 3)
-            .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); })
-            // Dynamic Lables
-            .on('mouseover', function (d) {
-                // Show tooltip at mouse pointer
-                tooltip.transition().duration(500).style('opacity', 0.9);
-                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[yKey], yToFixed)}<br/>`;
-                tooltip.html(tip)
-                    .style('left', (d3.event.pageX) + 'px')
-                    .style('top', (d3.event.pageY - 28) + 'px');
-            })
-            .on('mouseout', function () {
-                // Hide tooltip
-                tooltip.transition().duration(500).style('opacity', 0);
+        let pathNum = 0;
+        let dataArray = [];
+        if(zKey != null) {
+            // loop through 'applications' and make one line per 'months' array
+            data.forEach(parentObject => {
+                dataArray.push(parentObject[zKey]);
             });
-        // Lables
-        svg.selectAll('text').data(data).enter().append('text')
-            .text(function (d) { return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
-            .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-            .attr('y', function (d) { return yScale(d[yKey]); })
-            .attr('text-anchor', 'start')
-            .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
-        svg.append('g').call(xAxisGen)
-            .attr('class', 'd3-axis')
-            .attr('transform', 'translate(0, ' + (height - padding) + ')');
-        svg.append('g').call(yAxisGen)
-            .attr('class', 'd3-axis')
-            .attr('transform', 'translate(' + padding + ', 0)');
+        } else {
+            dataArray = data;
+        }
+        dataArray.forEach(data => {
+            const lineFunction = d3.line()
+                // Make sure all date strings are date objects before putting them into the path
+                .x(function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
+                .y(function (d) { return yScale(d[yKey]); })
+                .curve(d3.curveLinear);
+            // Line
+            svg.append('path')
+                .attr('class', `d3-path d3-path-${pathNum++}`)
+                .attr('d', lineFunction(data))
+                .attr('fill', 'none');
+            // Dots
+            svg.selectAll().data(data).enter().append('circle')
+                .attr('cx', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
+                .attr('cy', function (d) { return yScale(d[yKey]); })
+                .attr('r', 3)
+                .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); })
+                // Dynamic Lables
+                .on('mouseover', function (d) {
+                    // Show tooltip at mouse pointer
+                    tooltip.transition().duration(500).style('opacity', 0.9);
+                    const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[yKey], yToFixed)}<br/>`;
+                    tooltip.html(tip)
+                        .style('left', (d3.event.pageX) + 'px')
+                        .style('top', (d3.event.pageY - 28) + 'px');
+                })
+                .on('mouseout', function () {
+                    // Hide tooltip
+                    tooltip.transition().duration(500).style('opacity', 0);
+                });
+            // Static Lables
+            svg.selectAll('text').data(data).enter().append('text')
+                .text(function (d) { return d3Utils.showLabels(yMinMax, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
+                .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
+                .attr('y', function (d) { return yScale(d[yKey]); })
+                .attr('text-anchor', 'start')
+                .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
+            svg.append('g').call(xAxisGen)
+                .attr('class', 'd3-axis')
+                .attr('transform', 'translate(0, ' + (height - padding) + ')');
+            svg.append('g')
+                //.attr("transform", "translate(50, 0)")
+                .attr('class', 'd3-axis')
+                .attr('transform', 'translate(' + padding + ', 0)')
+                .call(yAxisGen);
+        });
     },
     createPieChart: (el, tooltip, data, width, xType, xKey, yKey, xToFixed, yToFixed, labels) => {
         const r = width / 2;
@@ -176,54 +194,70 @@ const d3Utils = {
                 }
             });
     },
-    createScatterPlot: (el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
+    createScatterPlot: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel) => {
         // Unlike LineChart, this array does not need to be sorted by x
-        const padding = 26;
+        const padding = 50;
         const isDate = (xType === 'date');
-        const xScale = d3Utils.scale(data, xType, xKey, [padding + 5, width - 10], true);
-        const yScale = d3Utils.scale(data, xType, yKey, [height - padding, 10], false);
-        const xAxisGen = d3.axisBottom(xScale);
-        if(isDate) {
+        const xMinMax = d3Utils.getMinMax(data, xType, null, xKey);
+        const yMinMax = d3Utils.getMinMax(data, 'number', null, yKey);
+        const xScale = d3Utils.scale(xType, xMinMax, [padding + 5, width - 10], true);
+        const yScale = d3Utils.scale(null, yMinMax, [height - padding, 10], true);
+        const xAxisGen = d3.axisBottom().scale(xScale);
+        if (isDate) {
             xAxisGen.tickFormat(d3.timeFormat('%b'));
         }
-        const yAxisGen = d3.axisLeft(yScale);
+        const yAxisGen = d3.axisLeft().scale(yScale);
         const svg = d3.select(el)
             .append('svg')
             .attr('class', 'd3-utils')
             .attr('width', width)
             .attr('height', height);
-        // Dots
-        svg.selectAll('circle').data(data).enter().append('circle')
-            .attr('cx', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-            .attr('cy', function (d) { return yScale(d[yKey]); })
-            .attr('r', 5)
-            .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); })
-            // Dynamic Lables
-            .on('mouseover', function (d) {
-                // Show tooltip at mouse pointer
-                tooltip.transition().duration(500).style('opacity', 0.9);
-                const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[yKey], yToFixed)}<br/>`;
-                tooltip.html(tip)
-                    .style('left', (d3.event.pageX) + 'px')
-                    .style('top', (d3.event.pageY - 28) + 'px');
-            })
-            .on('mouseout', function () {
-                // Hide tooltip
-                tooltip.transition().duration(500).style('opacity', 0);
+        let pathNum = 0;
+        let dataArray = [];
+        if(zKey != null) {
+            // loop through 'applications' and make one line per 'months' array
+            data.forEach(parentObject => {
+                dataArray.push(parentObject[zKey]);
             });
-        // Static Lables
-        svg.selectAll('text').data(data).enter().append('text')
-            .text(function (d) { return d3Utils.showLabels(data, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
-            .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-            .attr('y', function (d) { return yScale(d[yKey]); })
-            .attr('text-anchor', 'start')
-            .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
-        svg.append('g').call(xAxisGen)
-            .attr('class', 'd3-axis')
-            .attr('transform', 'translate(0, ' + (height - padding) + ')');
-        svg.append('g').call(yAxisGen)
-            .attr('class', 'd3-axis')
-            .attr('transform', 'translate(' + padding + ', 0)');
+        } else {
+            dataArray = data;
+        }
+        dataArray.forEach(data => {
+            // Dots
+            svg.selectAll('circle').data(data).enter().append('circle')
+                .attr('cx', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
+                .attr('cy', function (d) { return yScale(d[yKey]); })
+                .attr('r', 5)
+                .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); })
+                // Dynamic Lables
+                .on('mouseover', function (d) {
+                    // Show tooltip at mouse pointer
+                    tooltip.transition().duration(500).style('opacity', 0.9);
+                    const tip = `<strong>${xKey}:</strong> ${d3Utils.getValue(d[xKey], xToFixed)}<br/><strong>${yKey}:</strong> ${d3Utils.getValue(d[yKey], yToFixed)}<br/>`;
+                    tooltip.html(tip)
+                        .style('left', (d3.event.pageX) + 'px')
+                        .style('top', (d3.event.pageY - 28) + 'px');
+                })
+                .on('mouseout', function () {
+                    // Hide tooltip
+                    tooltip.transition().duration(500).style('opacity', 0);
+                });
+            // Static Lables
+            svg.selectAll('text').data(data).enter().append('text')
+                .text(function (d) { return d3Utils.showLabels(yMinMax, yKey, d3Utils.getValue(d[yKey], yToFixed), labels, true); })
+                .attr('x', function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
+                .attr('y', function (d) { return yScale(d[yKey]); })
+                .attr('text-anchor', 'start')
+                .attr('class', function (d) { return d3Utils.classPicker(d[yKey], warningLevel); });
+            svg.append('g')
+                .attr('class', 'd3-axis')
+                .attr('transform', 'translate(0, ' + (height - padding) + ')')
+                .call(xAxisGen);
+            svg.append('g')
+                .attr('class', 'd3-axis')
+                .attr('transform', 'translate(' + padding + ', 0)')
+                .call(yAxisGen);
+        });
     },
     classPicker: (value, warningLevel) => {
         // Returns a warning class that can be styles through CSS to make data above the warningLevel stand out
@@ -233,34 +267,69 @@ const d3Utils = {
             return 'd3-default';
         }
     },
-    draw: (type, el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
-        // Set defaults for any properties not pased in
-        width = width ? width : 300;
-        height = height ? height : 300;
-        xType = xType ? xType : 'number';
-        xKey = xKey ? xKey : 'x';
-        yKey = yKey ? yKey : 'y';
-        xToFixed = xToFixed ? xToFixed : Infinity;
-        yToFixed = yToFixed ? yToFixed : Infinity;
-        labels = labels ? labels : 'all';
-        warningLevel = warningLevel ? warningLevel : Infinity;
+    draw: (config) => {
+        const defaultConfig = {
+            data: null,
+            el: null, // DOM element to attach the chart to
+            height: 300,
+            labels: 'all', // 'none', 'minmax', or 'all' - Used to determine if labels are attached to each data point, no data points, or just the min/max values
+            tooltip: null,
+            type: 'line', // 'bar', 'line', 'pie', or 'scatter'
+            warningLevel: Infinity, // Change color above this numeric value
+            width: 300,
+            xKey: 'x', // Object property name to use for x value
+            xToFixed: Infinity, // Fixed number of decimal places for numbers
+            xType: 'number', // 'number' or 'date'
+            yKey: 'y', // Object property name to use for y value
+            yToFixed: Infinity, // Fixed number of decimal places for numbers
+            zKey: 'z' // zKey is only used for multi-line charts where Z represents the key in the parent object that denotes the sub-array
+        }
+        config = { ...defaultConfig, ...config };
         // Remove any existing SVG content before re-drawing
-        d3.select(el).selectAll('*').remove();
-        switch(type) {
+        d3.select(config.el).selectAll('*').remove();
+        switch(config.type) {
             case 'bar':
-                d3Utils.createBarGraph(el, tooltip, data, width, height, xKey, yKey, xToFixed, yToFixed, labels, warningLevel);
+                d3Utils.createBarGraph(config.el, config.tooltip, config.data, config.width, config.height, config.xKey, config.yKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
                 break;
             case 'line':
-                d3Utils.createLineChart(el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel);
+                d3Utils.createLineChart(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
                 break;
             case 'pie':
-                d3Utils.createPieChart(el, tooltip, data, width, xType, xKey, yKey, xToFixed, yToFixed, labels);
+                d3Utils.createPieChart(config.el, config.tooltip, config.data, config.width, config.xType, config.xKey, config.yKey, config.xToFixed, config.yToFixed, config.labels);
                 break;
             case 'scatter':
-                d3Utils.createScatterPlot(el, tooltip, data, width, height, xType, xKey, yKey, xToFixed, yToFixed, labels, warningLevel);
+                d3Utils.createScatterPlot(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
                 break;
             default:
         }
+    },
+    getMinMax: (data, propertyType, parentPropertyName, propertyName) => {
+        // Given an array and the propertyName within the array, computed the minimum and maximum values of that property
+        // If there is a parentPropertyName, the parentObject will be looped getting the min/max for all propertyName arrays underneath
+        // porpertyType can be 'date' or 'number'
+        let min = Number.MAX_VALUE;
+        let max = Number.MIN_VALUE;
+        // Make sure we always have a two level array
+        let dataArray = [];
+        if(parentPropertyName != null) {
+            data.forEach(parentObject => {
+                dataArray.push(parentObject[parentPropertyName]);
+            });
+        } else {
+            dataArray = data;
+        }
+        dataArray.forEach(parent => {
+            parent.forEach(property => {
+                if (propertyType === 'date') {
+                    min = Math.min(min, new Date(property[propertyName]));
+                    max = Math.max(max, new Date(property[propertyName]));
+                } else {
+                    min = Math.min(min, Number(property[propertyName]));
+                    max = Math.max(max, Number(property[propertyName]));
+                }
+            });
+        });
+        return { min, max };
     },
     getValue: (inputValue, toFixed) => {
         if (toFixed === Infinity) {
@@ -269,34 +338,29 @@ const d3Utils = {
             return inputValue.toFixed(toFixed);
         }
     },
-    scale: (data, xType, key, range, useMin = false) => {
+    scale: (xType, minmax, range, useMin = false) => {
         // Scale to best fit data into viewable space
         // Size refers to the x or y pixel size
-        let min, max, scale;
+        let scale;
         if (xType === 'date') {
-            min = new Date(d3.min(data, function (d) { return d[key]; }));
-            max = new Date(d3.max(data, function (d) { return d[key]; }));
             scale = d3.scaleTime();
         } else {
-            if (useMin) {
-                min = d3.min(data, function (d) { return d[key]; });
-            } else {
-                min = 0;
+            if (!useMin) {
+                minmax.min = 0;
             }
-            max = d3.max(data, function (d) { return d[key]; });
             scale = d3.scaleLinear();
         }
-        return scale.domain([min, max]).range(range);
+        return scale.domain([minmax.min, minmax.max]).range(range);
     },
-    showLabels: (data, key, value, type, useMin = true) => {
+    showLabels: (minmax, key, value, type, useMin = true) => {
         // Allows for either showing no labels, just the min and max labels, or all labels
-        const max = d3.max(data, function (d) { return d[key]; });
-        let min = 0;
-        if (useMin) {
-            min = d3.min(data, function (d) { return d[key]; });
+        if (!useMin) {
+            minmax.min = 0;
         }
-        if ((type !== 'none') && ((type === 'minmax' && (value === max || value === min)) || (type === 'all'))) {
+        if ((type !== 'none') && ((type === 'minmax' && (value === minmax.max || value === minmax.min)) || (type === 'all'))) {
             return value;
+        } else {
+            return null;
         }
     }
 }
