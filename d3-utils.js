@@ -55,11 +55,10 @@ const d3Utils = {
             .attr('y', function (d) { return height - (d[yKey] * yMultiplier) + 14; }) // Text 14px below the bar top, or roughly up 1em
             .attr('text-anchor', 'middle');
     },
-    createLineChart: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel) => {
+    createLineChart: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel, padding) => {
         // Array must be sorted by x before passing to this function or the line will jump all over the place
         // Supports both single line (data=[]) and multi-line (data=[[],[],[],...])
         // zKey is only used for multi-line charts where Z represents the key in the parent object that denotes the sub-array
-        const padding = 50;
         const isDate = (xType === 'date');
         // Find the max x and y scale values across the array of lines
         const xMinMax = d3Utils.getMinMax(data, xType, zKey, xKey);
@@ -84,7 +83,7 @@ const d3Utils = {
                 dataArray.push(parentObject[zKey]);
             });
         } else {
-            dataArray = data;
+            dataArray.push(data);
         }
         dataArray.forEach(data => {
             const lineFunction = d3.line()
@@ -194,9 +193,8 @@ const d3Utils = {
                 }
             });
     },
-    createScatterPlot: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel) => {
+    createScatterPlot: (el, tooltip, data, width, height, xType, xKey, yKey, zKey, xToFixed, yToFixed, labels, warningLevel, padding) => {
         // Unlike LineChart, this array does not need to be sorted by x
-        const padding = 50;
         const isDate = (xType === 'date');
         const xMinMax = d3Utils.getMinMax(data, xType, null, xKey);
         const yMinMax = d3Utils.getMinMax(data, 'number', null, yKey);
@@ -220,7 +218,7 @@ const d3Utils = {
                 dataArray.push(parentObject[zKey]);
             });
         } else {
-            dataArray = data;
+            dataArray.push(data);
         }
         dataArray.forEach(data => {
             // Dots
@@ -273,6 +271,7 @@ const d3Utils = {
             el: null, // DOM element to attach the chart to
             height: 300,
             labels: 'all', // 'none', 'minmax', or 'all' - Used to determine if labels are attached to each data point, no data points, or just the min/max values
+            padding: 50, // Only used for 'line' or 'scatter' to make room for the x and y axis lables
             tooltip: null,
             type: 'line', // 'bar', 'line', 'pie', or 'scatter'
             warningLevel: Infinity, // Change color above this numeric value
@@ -292,13 +291,13 @@ const d3Utils = {
                 d3Utils.createBarGraph(config.el, config.tooltip, config.data, config.width, config.height, config.xKey, config.yKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
                 break;
             case 'line':
-                d3Utils.createLineChart(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
+                d3Utils.createLineChart(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel, config.padding);
                 break;
             case 'pie':
                 d3Utils.createPieChart(config.el, config.tooltip, config.data, config.width, config.xType, config.xKey, config.yKey, config.xToFixed, config.yToFixed, config.labels);
                 break;
             case 'scatter':
-                d3Utils.createScatterPlot(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel);
+                d3Utils.createScatterPlot(config.el, config.tooltip, config.data, config.width, config.height, config.xType, config.xKey, config.yKey, config.zKey, config.xToFixed, config.yToFixed, config.labels, config.warningLevel, config.padding);
                 break;
             default:
         }
@@ -316,7 +315,7 @@ const d3Utils = {
                 dataArray.push(parentObject[parentPropertyName]);
             });
         } else {
-            dataArray = data;
+            dataArray.push(data);
         }
         dataArray.forEach(parent => {
             parent.forEach(property => {
