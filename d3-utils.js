@@ -6,6 +6,8 @@ import './d3-utils.css'
 
 const d3Utils = {
     createBarGraph: (el, tooltip, data, width, height, xKey, yKey, xToFixed, yToFixed, labels, warningLevel) => {
+        // Bar charts must be positive numbers
+        data.forEach(d => d[yKey]=Math.abs(d[yKey]));
         const padding = 2;
         // Find best fit for data to fill height
         const yMinMax = d3Utils.getMinMax(data, 'number', null, yKey);
@@ -307,7 +309,7 @@ const d3Utils = {
         // If there is a parentPropertyName, the parentObject will be looped getting the min/max for all propertyName arrays underneath
         // porpertyType can be 'date' or 'number'
         let min = Number.MAX_VALUE;
-        let max = Number.MIN_VALUE;
+        let max = -Number.MAX_VALUE;
         // Make sure we always have a two level array
         let dataArray = [];
         if(parentPropertyName != null) {
