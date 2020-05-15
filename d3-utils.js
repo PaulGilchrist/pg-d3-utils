@@ -91,7 +91,7 @@ const d3Utils = {
             const lineFunction = d3.line()
                 // Make sure all date strings are date objects before putting them into the path
                 .x(function (d) { return xScale(isDate ? new Date(d[xKey]) : d[xKey]); })
-                .y(function (d) { return yScale(d[yKey]); })
+                .y(function (d) { return d[yKey] ? yScale(d[yKey]) : null; })
                 .curve(d3.curveLinear);
             // Line
             svg.append('path')
@@ -321,12 +321,15 @@ const d3Utils = {
         }
         dataArray.forEach(parent => {
             parent.forEach(property => {
-                if (propertyType === 'date') {
-                    min = Math.min(min, new Date(property[propertyName]));
-                    max = Math.max(max, new Date(property[propertyName]));
-                } else {
-                    min = Math.min(min, Number(property[propertyName]));
-                    max = Math.max(max, Number(property[propertyName]));
+                let value = property[propertyName];
+                if(value) { // Some items in the array may not have the property
+                    if (propertyType === 'date') {
+                        min = Math.min(min, new Date(value));
+                        max = Math.max(max, new Date(value));
+                    } else {
+                        min = Math.min(min, Number(value));
+                        max = Math.max(max, Number(value));
+                    }
                 }
             });
         });
